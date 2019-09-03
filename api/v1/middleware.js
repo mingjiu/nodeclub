@@ -3,19 +3,27 @@ var eventproxy = require('eventproxy');
 var validator  = require('validator');
 var jwt = require('jsonwebtoken')
 var cache        = require('../../common/cache')
+var config = require('../../config')
 
 // 非登录用户直接屏蔽
 var auth = function (req, res, next) {
   var ep = new eventproxy();
   ep.fail(next);
 
+  console.log(req.headers.authorization)
+  
   var accessToken = req.headers.authorization.replace(/Bearer[ ]*/g, '')
   
   if (!accessToken) {
     res.status(401)
     return res.send({success: false, error_msg: '验证过期'})
+  } else if (accessToken === config.admin_obj.accessToken) {
+    UserModel.findOne({accessToken: accessToken}, ep.done((user) => {
+      req.user = user
+      next()
+    }))
   } else {
-    var sessionKey = jwt.verify(accessToken, 'ZHGJ-LITE-holyshit')
+    var sessionKey = jwt.verify(accessToken, config.jwt_secret)
     sessionKey = sessionKey.sessionKey
     cache.get(`sessionKey:${sessionKey}`, ep.done(function (data) {
 
